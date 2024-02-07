@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  test-app-db:
+    container_name: test-app-db
+    restart: unless-stopped
+    image: postgres:15
+    hostname: test-app-db
+    volumes:
+      - test-app-postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: semaphore
+      POSTGRES_PASSWORD: semaphore
+      POSTGRES_DB: semaphore
+    networks:
+      - test-app
+
+  semaphore:
+    container_name: test-app
+    ports:
+      - "3000"
+    image: semaphoreui/semaphore:latest
+    environment:
+      SEMAPHORE_DB_USER: semaphore
+      SEMAPHORE_DB_PASS: semaphore
+      SEMAPHORE_DB_HOST: test-app-db
+      SEMAPHORE_DB_PORT: 5432
+      SEMAPHORE_DB_DIALECT: postgres
+      SEMAPHORE_DB: semaphore
+      SEMAPHORE_PLAYBOOK_PATH: /tmp/semaphore/
+      SEMAPHORE_ADMIN_PASSWORD: test
+      SEMAPHORE_ADMIN_NAME: admin
+      SEMAPHORE_ADMIN_EMAIL: admin@localhost
+      SEMAPHORE_ADMIN: admin
+      TZ: Europe/Paris
+    depends_on:
+      - test-app-db
+    # volumes:
+    #   - ./config:/etc/semaphore # config.json location
+    #   - ./lib:/var/lib/semaphore # database.boltdb location (Not required if using mysql or postgres)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.semaphore.entrypoints=web"
+      - "traefik.http.routers.semaphore.rule=Host(`semaphore.eristich.dev`)"
+      - "traefik.http.services.semaphore.loadbalancer.server.port=3000"
+      - "traefik.docker.network=traefik_proxy"
+    networks:
+      - traefik_proxy
+      - test-app
+
+networks:
+  traefik_proxy:
+    external: true
+
+  test-app:
+
+volumes:
+  test-app-postgres:
